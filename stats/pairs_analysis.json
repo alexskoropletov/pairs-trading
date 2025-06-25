@@ -1,0 +1,26 @@
+{
+  "totalPairs": 435,
+  "averageCorrelation": 0.32543427389851715,
+  "maxCorrelation": 0.9634911889929243,
+  "minCorrelation": 0.00157272659775555,
+  "topPairs": [
+    {
+      "asset1": "V",
+      "asset2": "MA",
+      "correlation": 0.9634911889929243,
+      "strategy": "LONG MA / SHORT V"
+    },
+    {
+      "asset1": "AMZN",
+      "asset2": "META",
+      "correlation": 0.9149740422101269,
+      "strategy": "LONG META / SHORT AMZN"
+    },
+    {
+      "asset1": "DOGE-USD",
+      "asset2": "ADA-USD",
+      "correlation": 0.8940315736946531,
+      "strategy": "LONG DOGE-USD / SHORT ADA-USD"
+    }
+  ]
+}
