@@ -5,7 +5,7 @@
   "main": "dist/fetch_prices.js",
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && node dist/fetch_prices.js && node dist/markowitz_portfolio.js && node dist/pairs_trading.js && node dist/pairs_trading.js",
+    "start": "npm run build && node dist/fetch_prices.js && node dist/markowitz_portfolio.js && node dist/pairs_trading.js",
     "prices": "npm run build && node dist/fetch_prices.js",
     "portfolio": "npm run build && node dist/markowitz_portfolio.js",
     "plot-returns": "npm run build && node dist/plot_returns.js",
