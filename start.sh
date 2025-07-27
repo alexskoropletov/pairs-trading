@@ -3,15 +3,18 @@
 npm run build && 
 
 node dist/get_s_n_p.js && 
-echo 'done' && 
+echo 'done'
 
 node dist/fetch_prices.js && 
-echo 'done' && 
+echo 'done'
 
 node dist/pairs_trading.js && 
 echo 'done'
 
 node dist/markowitz_portfolio.js && 
+echo 'done'
+
+node dist/create_infographic.js && 
 echo 'done'
 
 node dist/telegram_sender.js && 

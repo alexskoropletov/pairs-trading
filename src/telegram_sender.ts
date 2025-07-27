@@ -8,6 +8,8 @@ import { StringSession } from "telegram/sessions";
 import readline from "readline";
 import fs from 'fs/promises';
 import logger from './logger';
+import path from 'path';
+import fsExtra from 'fs-extra';
 
 interface TelegramConfig {
   apiId: number;
@@ -142,11 +144,23 @@ if (require.main === module) {
     channelId: process.env.TELEGRAM_CHANNEL_ID || "",
   };
 
-  // const message = process.argv[2] || "Stock analysis completed!";
-
-  const pairsAnalysisData = await fs.readFile('./stats/pairs_analysis.json', 'utf8');
-
-  const message = "```" + pairsAnalysisData + "```";
+  // Найти последнюю картинку в infographics
+  let lastImagePath: string | null = null;
+  try {
+    const dir = path.join(__dirname, '../infographics');
+    const files = (await fsExtra.readdir(dir))
+      .filter(f => f.endsWith('.png'))
+      .map(f => ({
+        name: f,
+        time: fsExtra.statSync(path.join(dir, f)).mtime.getTime()
+      }))
+      .sort((a, b) => b.time - a.time);
+    if (files.length > 0) {
+      lastImagePath = path.join(dir, files[0].name);
+    }
+  } catch (e) {
+    // ignore
+  }
 
   if (!config.apiId || !config.apiHash || !config.phone || !config.channelId) {
     console.error("Please set TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE, and TELEGRAM_CHANNEL_ID environment variables");
@@ -155,15 +169,20 @@ if (require.main === module) {
 
   console.log("config", config);
 
-  sendStockAnalysisToTelegram(message, config)
-    .then(() => {
-      console.log("Message sent successfully!");
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error("Failed to send message:", error);
-      process.exit(1);
-    });
+  const sender = new TelegramSender(config);
+  await sender.initialize();
+  try {
+    if (lastImagePath) {
+      await sender.sendFile(lastImagePath, 'Инфографика по парам');
+      console.log('Image sent:', lastImagePath);
+    } else {
+      await sender.sendMessage('Нет инфографики для отправки.');
+      console.log('No image found, sent text message.');
+    }
+  } finally {
+    await sender.disconnect();
+  }
+  process.exit(0);
   })
-  ();
+  (); 
 } 
