@@ -7,5 +7,5 @@ node_modules/
 
 .env
 session
-telegram_session
+stats/
 

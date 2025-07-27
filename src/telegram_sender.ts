@@ -60,7 +60,7 @@ export class TelegramSender {
     });
 
     logger.info("Saving session");
-    await fs.writeFile('./telegram_session', stringSession.save());
+    await fs.writeFile('./session', stringSession.save());
     rl.close();
   }
 
