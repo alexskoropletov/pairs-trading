@@ -1,26 +1,38 @@
 {
-  "totalPairs": 435,
-  "averageCorrelation": 0.32543427389851715,
-  "maxCorrelation": 0.9634911889929243,
-  "minCorrelation": 0.00157272659775555,
+  "totalPairs": 190,
+  "averageCorrelation": 0.21119883198410677,
+  "maxCorrelation": 0.9537325910030062,
+  "minCorrelation": 0.0006905895660733372,
   "topPairs": [
     {
       "asset1": "V",
       "asset2": "MA",
-      "correlation": 0.9634911889929243,
-      "strategy": "LONG MA / SHORT V"
+      "correlation": 0.9537325910030062,
+      "strategy": "LONG V / SHORT MA"
     },
     {
       "asset1": "AMZN",
       "asset2": "META",
-      "correlation": 0.9149740422101269,
+      "correlation": 0.6964939849387458,
       "strategy": "LONG META / SHORT AMZN"
     },
     {
-      "asset1": "DOGE-USD",
-      "asset2": "ADA-USD",
-      "correlation": 0.8940315736946531,
-      "strategy": "LONG DOGE-USD / SHORT ADA-USD"
+      "asset1": "NVDA",
+      "asset2": "AVGO",
+      "correlation": 0.6211976465700948,
+      "strategy": "LONG NVDA / SHORT AVGO"
+    },
+    {
+      "asset1": "WMT",
+      "asset2": "COST",
+      "correlation": 0.5984041506161736,
+      "strategy": "LONG WMT / SHORT COST"
+    },
+    {
+      "asset1": "MSFT",
+      "asset2": "META",
+      "correlation": 0.5838365897510707,
+      "strategy": "LONG MSFT / SHORT META"
     }
   ]
 }

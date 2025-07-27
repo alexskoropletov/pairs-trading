@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import * as fs from 'fs-extra';
 import path from 'path';
 import { StockData, CSVRow, csvRowToStockData, CorrelationPair, PairsTradingAnalysis } from './types';
@@ -136,6 +138,16 @@ async function analyzePairs(horizonDays: number): Promise<CorrelationPair[]> {
             // Вычисляем волатильности
             const volatility1 = calculateVolatility(returns1);
             const volatility2 = calculateVolatility(returns2);
+
+            if (
+                !correlation
+                || !volatility1
+                || !volatility2
+            ) {
+                continue;
+            }
+
+            // console.log('[>>>>]', symbol1, symbol2, correlation, volatility1, volatility2);
             
             // Оцениваем перспективность
             const prospectivity1 = assessProspectivity(returns1, volatility1);
@@ -243,7 +255,7 @@ async function main(): Promise<void> {
         const sortedPairs = allPairs.sort((a, b) => b.correlation - a.correlation);
         
         // Берем топ-3 пары
-        const topPairs = sortedPairs.slice(0, 3);
+        const topPairs = sortedPairs.slice(0, process.env.TOP_PAIRS_COUNT ? parseInt(process.env.TOP_PAIRS_COUNT) : 3);
         
         // Вычисляем статистику
         const correlations = allPairs.map(p => p.correlation);
