@@ -277,7 +277,7 @@ async function saveResults(topPairs: CorrelationPair[], analysis: PairsTradingAn
         'stats/pairs_trading.csv',
         allPairsData
             .filter(
-                pair => Number(pair.correlation) > (process.env.MIN_CORRELATION ? parseInt(process.env.MIN_CORRELATION) : 0.7)
+                pair => Number(pair.correlation) > getCorrelation()
             ),
         { spaces: 2 }
     );
@@ -360,7 +360,7 @@ async function main(): Promise<void> {
         const topNasdaqPairs = nasdaqAllPairs.slice(0, process.env.TOP_PAIRS_COUNT ? parseInt(process.env.TOP_PAIRS_COUNT) : 3);
         
         // Объединяем топ-пары
-        const topPairs = [...topSp500Pairs, ...topNasdaqPairs];
+        const topPairs = [...topSp500Pairs, ...topNasdaqPairs].filter(p => Number(p.correlation) > getCorrelation());
         
         // Вычисляем статистику
         const correlations = allPairs.map(p => p.correlation);
@@ -417,6 +417,10 @@ async function main(): Promise<void> {
         logger.error('❌ Ошибка при анализе пар:', error);
         process.exit(1);
     }
+}
+
+function getCorrelation(): number {
+    return process.env.MIN_CORRELATION ? parseInt(process.env.MIN_CORRELATION) : 0.7;
 }
 
 // Запускаем скрипт
