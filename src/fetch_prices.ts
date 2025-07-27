@@ -11,6 +11,32 @@ const STATS_DIR = 'stats';
 // Создаем папку stats если её нет
 fs.ensureDirSync(STATS_DIR);
 
+// Функция для проверки, обновлялись ли данные сегодня
+function isDataUpToDate(symbol: string): boolean {
+    try {
+        const csvPath = path.join(STATS_DIR, `${symbol}.csv`);
+        
+        // Проверяем существование файла
+        if (!fs.existsSync(csvPath)) {
+            return false;
+        }
+        
+        // Получаем время последнего изменения файла
+        const stats = fs.statSync(csvPath);
+        const lastModified = new Date(stats.mtime);
+        const today = new Date();
+        
+        // Сравниваем даты (без времени)
+        const lastModifiedDate = lastModified.toDateString();
+        const todayDate = today.toDateString();
+        
+        return lastModifiedDate === todayDate;
+    } catch (error) {
+        logger.warn(`⚠️ Ошибка при проверке даты для ${symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return false;
+    }
+}
+
 // Функция для получения данных акции через Yahoo Finance API
 async function fetchStockData(symbol: string): Promise<StockData[]> {
     try {
@@ -74,11 +100,23 @@ async function main(): Promise<void> {
     // Используем импортированный массив символов
     const symbols = stockSymbols;
     
-    logger.info(`📊 Загружаем данные для ${symbols.length} активов...`);
+    logger.info(`📊 Проверяем данные для ${symbols.length} активов...`);
+    
+    let updatedCount = 0;
+    let skippedCount = 0;
     
     try {
         for (const ticker of symbols) {
-            logger.info(`\n📊 Загружаю данные для ${ticker}...`);
+            logger.info(`\n📊 Проверяю ${ticker}...`);
+            
+            // Проверяем, нужно ли обновлять данные
+            if (isDataUpToDate(ticker)) {
+                logger.info(`⏭️ ${ticker}: данные уже актуальны (обновлялись сегодня)`);
+                skippedCount++;
+                continue;
+            }
+            
+            logger.info(`📥 ${ticker}: загружаю новые данные...`);
             
             try {
                 const data = await fetchStockData(ticker);
@@ -90,6 +128,7 @@ async function main(): Promise<void> {
                 
                 await saveToCSV(ticker, data);
                 logger.info(`✅ Сохранено: ${ticker}.csv (${data.length} записей)`);
+                updatedCount++;
                 
                 // Небольшая задержка между запросами
                 await new Promise(resolve => setTimeout(resolve, 1000));
@@ -100,7 +139,10 @@ async function main(): Promise<void> {
         }
         
         logger.info('\n🎉 Загрузка завершена!');
-        logger.info(`📁 Файлы сохранены в папке: ${STATS_DIR}/`);
+        logger.info(`📊 Статистика:`);
+        logger.info(`  ✅ Обновлено: ${updatedCount} тикеров`);
+        logger.info(`  ⏭️ Пропущено: ${skippedCount} тикеров`);
+        logger.info(`  📁 Файлы сохранены в папке: ${STATS_DIR}/`);
         
     } catch (error) {
         logger.error('❌ Критическая ошибка:', error instanceof Error ? error.message : 'Unknown error');

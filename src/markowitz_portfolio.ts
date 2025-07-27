@@ -1,11 +1,47 @@
 import * as fs from 'fs-extra';
 import path from 'path';
-import { StockData, Portfolio, EfficientFrontierPoint, PortfolioSummary, AssetStats, CSVRow, csvRowToStockData } from './types';
+import { 
+    StockData, 
+    Portfolio, 
+    EfficientFrontierPoint, 
+    PortfolioSummary, 
+    AssetStats, 
+    CSVRow, 
+    csvRowToStockData,
+} from './types';
 import { stockSymbols } from './stock';
 import logger from './logger';
 
 // Папка с данными
 const STATS_DIR = 'stats';
+
+// Функция для чтения результатов pairs_trading и извлечения тикеров
+async function getTickersFromPairsTrading(): Promise<string[]> {
+    try {
+        // Пытаемся прочитать результаты pairs_trading
+        const pairsData = await fs.readJson(path.join(STATS_DIR, 'pairs_analysis.json'));
+        
+        if (pairsData && pairsData.topPairs && Array.isArray(pairsData.topPairs)) {
+            const tickers = new Set<string>();
+            
+            // Извлекаем тикеры из топ-пар
+            pairsData.topPairs.forEach((pair: any) => {
+                if (pair.asset1) tickers.add(pair.asset1);
+                if (pair.asset2) tickers.add(pair.asset2);
+            });
+            
+            const tickerArray = Array.from(tickers);
+            logger.info(`📊 Найдено ${tickerArray.length} уникальных тикеров из pairs_trading: ${tickerArray.join(', ')}`);
+            return tickerArray;
+        }
+    } catch (error) {
+        logger.warn('⚠️ Не удалось прочитать pairs_analysis.json, используем все доступные тикеры');
+    }
+    
+    // Fallback: используем все доступные тикеры
+    logger.info('📊 Используем все доступные тикеры');
+    return stockSymbols;
+}
 
 // Функция для чтения CSV файла
 async function readCSV(symbol: string): Promise<StockData[]> {
@@ -298,8 +334,8 @@ async function main(): Promise<void> {
     try {
         logger.info('📊 Анализ портфеля Марковица...');
         
-        // Используем импортированный массив символов
-        const symbols = stockSymbols;
+        // Получаем тикеры из pairs_trading
+        const symbols = await getTickersFromPairsTrading();
         
         logger.info(`📈 Анализируем ${symbols.length} активов...`);
         

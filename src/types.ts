@@ -117,10 +117,13 @@ export interface CorrelationPair {
   avgReturn1: number;
   avgReturn2: number;
   strategy: string;
+  index?: string; // Добавляем поле для индекса
 }
 
 export interface PairsTradingAnalysis {
   totalPairs: number;
+  sp500Pairs?: number; // Добавляем поле для количества S&P500 пар
+  nasdaqPairs?: number; // Добавляем поле для количества NASDAQ пар
   averageCorrelation: number;
   maxCorrelation: number;
   minCorrelation: number;
@@ -129,5 +132,6 @@ export interface PairsTradingAnalysis {
     asset2: string;
     correlation: number;
     strategy: string;
+    index?: string; // Добавляем поле для индекса
   }[];
 } 
