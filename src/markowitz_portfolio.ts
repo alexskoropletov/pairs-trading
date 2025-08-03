@@ -9,11 +9,66 @@ import {
     CSVRow, 
     csvRowToStockData,
 } from './types';
-import { stockSymbols } from './stock';
+import { stockSymbols, sp500StocksFallback, nasdaq100StocksFallback, imoexStocksFallback, rucbitrStocksFallback, rgbiStocksFallback } from './stock';
+import { ensureTickerDirectories } from './utils';
 import logger from './logger';
 
-// Папка с данными
+// Папки с данными
 const STATS_DIR = 'stats';
+const TICKERS_DIR = 'tickers';
+
+// Функция для определения индекса тикера
+function getTickerIndex(symbol: string): 'sp500' | 'nasdaq' | 'imoex' | 'rucbitr' | 'rgbi' {
+    const sp500Symbols = sp500StocksFallback.map(stock => stock.symbol);
+    const nasdaqSymbols = nasdaq100StocksFallback.map(stock => stock.symbol);
+    const imoexSymbols = imoexStocksFallback.map(stock => stock.symbol);
+    const rucbitrSymbols = rucbitrStocksFallback.map(stock => stock.symbol);
+    const rgbiSymbols = rgbiStocksFallback.map(stock => stock.symbol);
+    
+    // Проверяем по приоритету: российские индексы, затем американские
+    if (rgbiSymbols.includes(symbol)) {
+        return 'rgbi';
+    } else if (rucbitrSymbols.includes(symbol)) {
+        return 'rucbitr';
+    } else if (imoexSymbols.includes(symbol)) {
+        return 'imoex';
+    } else if (nasdaqSymbols.includes(symbol)) {
+        return 'nasdaq';
+    } else if (sp500Symbols.includes(symbol)) {
+        return 'sp500';
+    } else {
+        // Для криптовалют и других активов используем S&P500
+        return 'sp500';
+    }
+}
+
+// Функция для получения пути к CSV файлу
+function getCSVPath(symbol: string): string {
+    const index = getTickerIndex(symbol);
+    let dir: string;
+    
+    switch (index) {
+        case 'sp500':
+            dir = path.join(TICKERS_DIR, 'sp500');
+            break;
+        case 'nasdaq':
+            dir = path.join(TICKERS_DIR, 'nasdaq');
+            break;
+        case 'imoex':
+            dir = path.join(TICKERS_DIR, 'imoex');
+            break;
+        case 'rucbitr':
+            dir = path.join(TICKERS_DIR, 'rucbitr');
+            break;
+        case 'rgbi':
+            dir = path.join(TICKERS_DIR, 'rgbi');
+            break;
+        default:
+            dir = path.join(TICKERS_DIR, 'sp500');
+    }
+    
+    return path.join(dir, `${symbol}.csv`);
+}
 
 // Функция для чтения результатов pairs_trading и извлечения тикеров
 async function getTickersFromPairsTrading(): Promise<string[]> {
@@ -46,7 +101,7 @@ async function getTickersFromPairsTrading(): Promise<string[]> {
 // Функция для чтения CSV файла
 async function readCSV(symbol: string): Promise<StockData[]> {
     try {
-        const csvPath = path.join(STATS_DIR, `${symbol}.csv`);
+        const csvPath = getCSVPath(symbol);
         const csvContent = await fs.readFile(csvPath, 'utf-8');
         const lines = csvContent.split('\n');
         const headers = lines[0].split(',');
@@ -333,6 +388,9 @@ function generateEfficientFrontier(covarianceMatrix: number[][], expectedReturns
 async function main(): Promise<void> {
     try {
         logger.info('📊 Анализ портфеля Марковица...');
+        
+        // Создаем папки для тикеров если их нет
+        await ensureTickerDirectories();
         
         // Получаем тикеры из pairs_trading
         const symbols = await getTickersFromPairsTrading();

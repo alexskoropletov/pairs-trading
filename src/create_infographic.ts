@@ -1,12 +1,16 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { createCanvas, Canvas, CanvasRenderingContext2D } from 'canvas';
+import { I18n, createI18n } from './i18n';
 import logger from './logger';
 
 interface PairsAnalysis {
   totalPairs: number;
   sp500Pairs: number;
   nasdaqPairs: number;
+  imoexPairs?: number;
+  rucbitrPairs?: number;
+  rgbiPairs?: number;
   averageCorrelation: number;
   maxCorrelation: number;
   minCorrelation: number;
@@ -17,6 +21,45 @@ interface PairsAnalysis {
     strategy: string;
     index: string;
   }>;
+  assetsInfo?: Array<{
+    symbol: string;
+    currentPrice: number;
+    volatility: number;
+    avgReturn: number;
+    index: string;
+    dividendYield?: number;
+    couponRate?: number;
+  }>;
+}
+
+// Интерфейс для анализа конкретного индекса
+interface IndexAnalysis {
+  indexName: string;
+  totalPairs: number;
+  averageCorrelation: number;
+  maxCorrelation: number;
+  minCorrelation: number;
+  correlationThreshold: number;
+  topPairs: Array<{
+    asset1: string;
+    asset2: string;
+    correlation: number;
+    strategy: string;
+    volatility1: number;
+    volatility2: number;
+    avgReturn1: number;
+    avgReturn2: number;
+  }>;
+  assetsInfo: Array<{
+    symbol: string;
+    currentPrice: number;
+    volatility: number;
+    avgReturn: number;
+    index: string;
+    dividendYield?: number;
+    couponRate?: number;
+  }>;
+  analysisDate: string;
 }
 
 class InfographicGenerator {
@@ -24,10 +67,12 @@ class InfographicGenerator {
   private ctx!: CanvasRenderingContext2D;
   private infographicsDir: string;
   private width: number = 1200;
-  private height: number = 800;
+  private height: number = 1200; // Увеличиваем высоту для новой секции
+  private i18n: I18n;
 
   constructor() {
     this.infographicsDir = 'infographics';
+    this.i18n = createI18n();
     this.ensureInfographicsDir();
     this.initializeCanvas();
   }
@@ -52,12 +97,12 @@ class InfographicGenerator {
     this.ctx.fillStyle = '#2c3e50';
     this.ctx.font = 'bold 32px Arial';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('Pairs Trading Analysis', this.width / 2, 40);
+    this.ctx.fillText(this.i18n.t('pairs_trading_analysis'), this.width / 2, 40);
     
     // Подзаголовок
     this.ctx.fillStyle = '#7f8c8d';
     this.ctx.font = '16px Arial';
-    this.ctx.fillText('Анализ коррелированных пар акций', this.width / 2, 65);
+    this.ctx.fillText(this.i18n.t('correlated_pairs_analysis'), this.width / 2, 65);
   }
 
   private drawSummaryStats(data: PairsAnalysis): void {
@@ -66,25 +111,34 @@ class InfographicGenerator {
     this.ctx.fillStyle = '#2c3e50';
     this.ctx.font = 'bold 18px Arial';
     this.ctx.textAlign = 'left';
-    this.ctx.fillText('Общая статистика', 70, 125);
+    this.ctx.fillText(this.i18n.t('total_pairs'), 70, 125);
     
     this.ctx.fillStyle = '#34495e';
     this.ctx.font = '14px Arial';
-    this.ctx.fillText(`Всего пар: ${data.totalPairs.toLocaleString()}`, 70, 150);
-    this.ctx.fillText(`S&P 500: ${data.sp500Pairs.toLocaleString()}`, 70, 170);
-    this.ctx.fillText(`NASDAQ: ${data.nasdaqPairs.toLocaleString()}`, 70, 190);
+    this.ctx.fillText(`${this.i18n.t('total_pairs')}: ${data.totalPairs.toLocaleString()}`, 70, 150);
+    this.ctx.fillText(`${this.i18n.t('sp500')}: ${data.sp500Pairs.toLocaleString()}`, 70, 170);
+    this.ctx.fillText(`${this.i18n.t('nasdaq')}: ${data.nasdaqPairs.toLocaleString()}`, 70, 190);
+    if (data.imoexPairs) {
+      this.ctx.fillText(`${this.i18n.getIndexEmoji('imoex')} ${this.i18n.t('imoex')}: ${data.imoexPairs.toLocaleString()}`, 70, 210);
+    }
+    if (data.rucbitrPairs) {
+      this.ctx.fillText(`${this.i18n.getIndexEmoji('rucbitr')} ${this.i18n.t('rucbitr')}: ${data.rucbitrPairs.toLocaleString()}`, 70, 230);
+    }
+    if (data.rgbiPairs) {
+      this.ctx.fillText(`${this.i18n.getIndexEmoji('rgbi')} ${this.i18n.t('rgbi')}: ${data.rgbiPairs.toLocaleString()}`, 70, 250);
+    }
     
     // Корреляция
     this.drawBox(400, 100, 300, 120, '#e8f5e8', '#a8d5a8');
     this.ctx.fillStyle = '#2c3e50';
     this.ctx.font = 'bold 18px Arial';
-    this.ctx.fillText('Корреляция', 420, 125);
+    this.ctx.fillText(this.i18n.t('correlation'), 420, 125);
     
     this.ctx.fillStyle = '#34495e';
     this.ctx.font = '14px Arial';
-    this.ctx.fillText(`Средняя: ${(data.averageCorrelation * 100).toFixed(2)}%`, 420, 150);
-    this.ctx.fillText(`Максимум: ${(data.maxCorrelation * 100).toFixed(2)}%`, 420, 170);
-    this.ctx.fillText(`Минимум: ${(data.minCorrelation * 100).toFixed(2)}%`, 420, 190);
+    this.ctx.fillText(`${this.i18n.t('average_correlation')}: ${this.i18n.formatPercentage(data.averageCorrelation * 100)}`, 420, 150);
+    this.ctx.fillText(`${this.i18n.t('max_correlation')}: ${this.i18n.formatPercentage(data.maxCorrelation * 100)}`, 420, 170);
+    this.ctx.fillText(`${this.i18n.t('min_correlation')}: ${this.i18n.formatPercentage(data.minCorrelation * 100)}`, 420, 190);
   }
 
   private drawTopPairsTable(data: PairsAnalysis): void {
@@ -94,10 +148,10 @@ class InfographicGenerator {
     this.ctx.fillStyle = '#2c3e50';
     this.ctx.font = 'bold 18px Arial';
     this.ctx.textAlign = 'left';
-    this.ctx.fillText('Топ-10 пар для торговли', 70, 280);
+    this.ctx.fillText(this.i18n.t('top_pairs'), 70, 280);
     
     // Заголовки колонок
-    const headers = ['Ранг', 'Актив 1', 'Актив 2', 'Корреляция', 'Стратегия', 'Индекс'];
+    const headers = ['Ранг', 'Актив 1', 'Актив 2', this.i18n.t('correlation'), this.i18n.t('strategy'), this.i18n.t('index')];
     const columnWidths = [80, 150, 150, 120, 300, 100];
     let currentX = 70;
     
@@ -166,7 +220,7 @@ class InfographicGenerator {
     this.ctx.fillStyle = '#2c3e50';
     this.ctx.font = 'bold 16px Arial';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('Распределение корреляций (Топ-8 пар)', this.width / 2, 610);
+    this.ctx.fillText(this.i18n.t('correlation_distribution'), this.width / 2, 610);
     
     // Создаем гистограмму
     const topPairs = data.topPairs.slice(0, 8);
@@ -204,11 +258,166 @@ class InfographicGenerator {
     });
   }
 
+  private drawAssetsInfo(data: PairsAnalysis): void {
+    if (!data.assetsInfo || data.assetsInfo.length === 0) {
+      return;
+    }
+
+    this.drawBox(50, 780, 1100, 350, '#f8f9fa', '#dee2e6');
+    
+    // Заголовок секции
+    this.ctx.fillStyle = '#2c3e50';
+    this.ctx.font = 'bold 18px Arial';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(this.i18n.t('assets_info'), 70, 810);
+    
+    // Заголовки колонок
+    const headers = [this.i18n.t('symbol'), this.i18n.t('price'), this.i18n.t('volatility'), this.i18n.t('avg_return'), 'Див/Купон', this.i18n.t('index')];
+    const columnWidths = [120, 120, 120, 120, 120, 100];
+    let currentX = 70;
+    
+    this.ctx.fillStyle = '#495057';
+    this.ctx.font = 'bold 12px Arial';
+    headers.forEach((header, index) => {
+      this.ctx.fillText(header, currentX, 840);
+      currentX += columnWidths[index];
+    });
+    
+    // Разделительная линия
+    this.ctx.strokeStyle = '#dee2e6';
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(70, 850);
+    this.ctx.lineTo(1150, 850);
+    this.ctx.stroke();
+    
+    // Получаем уникальные активы из топ-10 пар с их индексами
+    const topPairs = data.topPairs.slice(0, 10);
+    const assetIndexMap = new Map<string, string>(); // symbol -> index
+    
+    topPairs.forEach(pair => {
+      // Если актив уже есть в карте, проверяем корреляцию
+      if (assetIndexMap.has(pair.asset1)) {
+        // Оставляем тот индекс, где корреляция выше
+        const existingPair = topPairs.find(p => p.asset1 === pair.asset1 || p.asset2 === pair.asset1);
+        if (existingPair && pair.correlation > existingPair.correlation) {
+          assetIndexMap.set(pair.asset1, pair.index);
+        }
+      } else {
+        assetIndexMap.set(pair.asset1, pair.index);
+      }
+      
+      if (assetIndexMap.has(pair.asset2)) {
+        const existingPair = topPairs.find(p => p.asset1 === pair.asset2 || p.asset2 === pair.asset2);
+        if (existingPair && pair.correlation > existingPair.correlation) {
+          assetIndexMap.set(pair.asset2, pair.index);
+        }
+      } else {
+        assetIndexMap.set(pair.asset2, pair.index);
+      }
+    });
+    
+    // Фильтруем информацию об активах только для тех, что в топ-10 парах
+    // и только в том индексе, где они попали в топ
+    // Убираем дубликаты по символу
+    const uniqueAssets = new Map<string, any>();
+    data.assetsInfo
+      .filter(asset => {
+        const expectedIndex = assetIndexMap.get(asset.symbol);
+        return expectedIndex && asset.index === expectedIndex;
+      })
+      .forEach(asset => {
+        // Если актив уже есть, оставляем тот, у которого больше волатильность
+        if (uniqueAssets.has(asset.symbol)) {
+          const existing = uniqueAssets.get(asset.symbol);
+          if (asset.volatility > existing.volatility) {
+            uniqueAssets.set(asset.symbol, asset);
+          }
+        } else {
+          uniqueAssets.set(asset.symbol, asset);
+        }
+      });
+    
+    // Преобразуем в массив и сортируем по волатильности
+    const relevantAssets = Array.from(uniqueAssets.values())
+      .sort((a, b) => b.volatility - a.volatility);
+    
+    // Данные таблицы
+    relevantAssets.forEach((asset, index) => {
+      const rowY = 870 + index * 25;
+      currentX = 70;
+      
+      // Определяем цвет для индекса
+      let indexColor = '#495057';
+      let indexText = asset.index;
+      
+      if (asset.index === 'IMOEX') {
+        indexColor = '#e74c3c'; // Красный для российских акций
+        indexText = '🇷🇺 IMOEX';
+      } else if (asset.index === 'RUCBITR') {
+        indexColor = '#9b59b6'; // Фиолетовый для корпоративных облигаций
+        indexText = '🏢 RUCBITR';
+      } else if (asset.index === 'RGBI') {
+        indexColor = '#f39c12'; // Оранжевый для облигаций
+        indexText = '📈 RGBI';
+      } else if (asset.index === 'S&P500') {
+        indexColor = '#3498db'; // Синий для S&P500
+      } else if (asset.index === 'NASDAQ') {
+        indexColor = '#2ecc71'; // Зеленый для NASDAQ
+      }
+      
+      // Символ
+      this.ctx.fillStyle = '#007bff';
+      this.ctx.font = 'bold 12px Arial';
+      this.ctx.fillText(asset.symbol, currentX, rowY);
+      currentX += columnWidths[0];
+      
+      // Цена
+      this.ctx.fillStyle = '#28a745';
+      this.ctx.font = '12px Arial';
+      this.ctx.fillText(asset.currentPrice.toFixed(2), currentX, rowY);
+      currentX += columnWidths[1];
+      
+      // Волатильность
+      this.ctx.fillStyle = '#dc3545';
+      this.ctx.font = 'bold 12px Arial';
+      this.ctx.fillText(asset.volatility.toFixed(2), currentX, rowY);
+      currentX += columnWidths[2];
+      
+      // Доходность
+      this.ctx.fillStyle = asset.avgReturn >= 0 ? '#28a745' : '#dc3545';
+      this.ctx.font = '12px Arial';
+      this.ctx.fillText((asset.avgReturn * 100).toFixed(2), currentX, rowY);
+      currentX += columnWidths[3];
+      
+      // Дивиденды/Купоны
+      let dividendCouponText = '';
+      if (asset.dividendYield) {
+        dividendCouponText = `Д: ${asset.dividendYield}%`;
+        this.ctx.fillStyle = '#28a745';
+      } else if (asset.couponRate) {
+        dividendCouponText = `К: ${asset.couponRate}%`;
+        this.ctx.fillStyle = '#ffc107';
+      } else {
+        dividendCouponText = '-';
+        this.ctx.fillStyle = '#6c757d';
+      }
+      this.ctx.font = '11px Arial';
+      this.ctx.fillText(dividendCouponText, currentX, rowY);
+      currentX += columnWidths[4];
+      
+      // Индекс
+      this.ctx.fillStyle = indexColor;
+      this.ctx.font = '12px Arial';
+      this.ctx.fillText(indexText, currentX, rowY);
+    });
+  }
+
   private drawFooter(): void {
     this.ctx.fillStyle = '#6c757d';
     this.ctx.font = '12px Arial';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText(`Сгенерировано: ${new Date().toLocaleDateString('ru-RU')}`, this.width / 2, this.height - 20);
+    this.ctx.fillText(`${this.i18n.t('generated_on')}: ${this.i18n.formatDate(new Date())}`, this.width / 2, this.height - 20);
   }
 
   private drawBox(x: number, y: number, width: number, height: number, fillColor: string, strokeColor: string): void {
@@ -226,7 +435,7 @@ class InfographicGenerator {
       // Загружаем данные
       const dataPath = path.join('stats', 'pairs_analysis.json');
       if (!fs.existsSync(dataPath)) {
-        throw new Error('Файл pairs_analysis.json не найден');
+        throw new Error(this.i18n.t('error_loading_data'));
       }
       
       const data: PairsAnalysis = await fs.readJson(dataPath);
@@ -242,6 +451,7 @@ class InfographicGenerator {
       this.drawSummaryStats(data);
       this.drawTopPairsTable(data);
       this.drawCorrelationChart(data);
+      this.drawAssetsInfo(data); // Добавляем вызов новой функции
       this.drawFooter();
       
       // Генерируем имя файла
@@ -256,9 +466,144 @@ class InfographicGenerator {
       logger.info(`✅ Инфографика сохранена: ${filePath}`);
       
     } catch (error) {
-      logger.error('❌ Ошибка при создании инфографики:', error instanceof Error ? error.message : 'Unknown error');
+      logger.error(`❌ ${this.i18n.t('error_generating_infographic')}:`, error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
+  }
+
+  public async generateIndexInfographic(analysis: IndexAnalysis): Promise<void> {
+    try {
+      logger.info(`🎨 Начинаю создание инфографики для ${analysis.indexName}...`);
+      
+      // Очищаем холст
+      this.ctx.clearRect(0, 0, this.width, this.height);
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.fillRect(0, 0, this.width, this.height);
+      
+      // Рисуем элементы для конкретного индекса
+      this.drawIndexHeader(analysis);
+      this.drawIndexStats(analysis);
+      this.drawIndexPairsTable(analysis);
+      this.drawIndexAssetsInfo(analysis);
+      this.drawFooter();
+      
+      // Создаем папку для конкретного индекса
+      const indexNameLower = analysis.indexName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const indexInfographicsDir = path.join(this.infographicsDir, indexNameLower);
+      await fs.ensureDir(indexInfographicsDir);
+      
+      // Генерируем имя файла
+      const today = new Date();
+      const fileName = `pairs-${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.png`;
+      const filePath = path.join(indexInfographicsDir, fileName);
+      
+      // Сохраняем файл
+      const buffer = this.canvas.toBuffer('image/png');
+      await fs.writeFile(filePath, buffer);
+      
+      logger.info(`✅ Инфографика ${analysis.indexName} сохранена: ${filePath}`);
+      
+    } catch (error) {
+      logger.error(`❌ ${this.i18n.t('error_generating_infographic')} для ${analysis.indexName}:`, error instanceof Error ? error.message : 'Unknown error');
+      throw error;
+    }
+  }
+
+  private drawIndexHeader(analysis: IndexAnalysis): void {
+    // Заголовок для конкретного индекса
+    this.ctx.fillStyle = '#2c3e50';
+    this.ctx.font = 'bold 24px Arial';
+    this.ctx.fillText(`${this.i18n.t('index_analysis')}: ${analysis.indexName}`, 70, 50);
+    
+    // Подзаголовок
+    this.ctx.fillStyle = '#7f8c8d';
+    this.ctx.font = '14px Arial';
+    this.ctx.fillText(`${this.i18n.t('analysis_date')}: ${this.i18n.formatDate(new Date(analysis.analysisDate))}`, 70, 75);
+  }
+
+  private drawIndexStats(analysis: IndexAnalysis): void {
+    // Статистика для конкретного индекса
+    this.ctx.fillStyle = '#34495e';
+    this.ctx.font = 'bold 18px Arial';
+    this.ctx.fillText(this.i18n.t('total_pairs'), 70, 120);
+    
+    this.ctx.fillStyle = '#34495e';
+    this.ctx.font = '14px Arial';
+    this.ctx.fillText(`${this.i18n.t('total_pairs')}: ${analysis.totalPairs.toLocaleString()}`, 70, 150);
+    this.ctx.fillText(`${this.i18n.t('correlation_threshold')}: ${this.i18n.formatPercentage(analysis.correlationThreshold * 100)}`, 70, 170);
+    this.ctx.fillText(`${this.i18n.t('average_correlation')}: ${this.i18n.formatPercentage(analysis.averageCorrelation * 100)}`, 70, 190);
+    this.ctx.fillText(`${this.i18n.t('max_correlation')}: ${this.i18n.formatPercentage(analysis.maxCorrelation * 100)}`, 70, 210);
+    this.ctx.fillText(`${this.i18n.t('top_pairs')}: ${analysis.topPairs.length}`, 70, 230);
+  }
+
+  private drawIndexPairsTable(analysis: IndexAnalysis): void {
+    // Таблица топ-пар для конкретного индекса
+    this.ctx.fillStyle = '#34495e';
+    this.ctx.font = 'bold 18px Arial';
+    this.ctx.fillText(this.i18n.t('top_pairs'), 70, 280);
+    
+    // Заголовки таблицы
+    this.ctx.fillStyle = '#2c3e50';
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.fillText(this.i18n.t('asset_pair'), 70, 310);
+    this.ctx.fillText(this.i18n.t('correlation'), 250, 310);
+    this.ctx.fillText(this.i18n.t('strategy'), 350, 310);
+    this.ctx.fillText(this.i18n.t('volatility'), 500, 310);
+    
+    // Данные таблицы
+    analysis.topPairs.slice(0, 8).forEach((pair, index) => {
+      const rowY = 340 + index * 25;
+      
+      this.ctx.fillStyle = '#34495e';
+      this.ctx.font = '12px Arial';
+      this.ctx.fillText(`${pair.asset1} ↔ ${pair.asset2}`, 70, rowY);
+      this.ctx.fillText(`${(pair.correlation * 100).toFixed(2)}%`, 250, rowY);
+      this.ctx.fillText(pair.strategy, 350, rowY);
+      this.ctx.fillText(`${pair.volatility1.toFixed(2)}% / ${pair.volatility2.toFixed(2)}%`, 500, rowY);
+    });
+  }
+
+  private drawIndexAssetsInfo(analysis: IndexAnalysis): void {
+    // Информация об активах для конкретного индекса
+    this.ctx.fillStyle = '#34495e';
+    this.ctx.font = 'bold 18px Arial';
+    this.ctx.fillText(this.i18n.t('assets_info'), 70, 600);
+    
+    // Заголовки таблицы
+    this.ctx.fillStyle = '#2c3e50';
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.fillText(this.i18n.t('symbol'), 70, 630);
+    this.ctx.fillText(this.i18n.t('price'), 150, 630);
+    this.ctx.fillText(this.i18n.t('volatility'), 250, 630);
+    this.ctx.fillText(this.i18n.t('avg_return'), 350, 630);
+    this.ctx.fillText('Див/Купон', 450, 630);
+    
+    // Данные таблицы
+    analysis.assetsInfo.slice(0, 10).forEach((asset, index) => {
+      const rowY = 660 + index * 25;
+      
+      this.ctx.fillStyle = '#34495e';
+      this.ctx.font = '12px Arial';
+      this.ctx.fillText(asset.symbol, 70, rowY);
+      this.ctx.fillText(`$${asset.currentPrice.toFixed(2)}`, 150, rowY);
+      this.ctx.fillText(`${asset.volatility.toFixed(2)}%`, 250, rowY);
+      this.ctx.fillText(`${(asset.avgReturn * 100).toFixed(2)}%`, 350, rowY);
+      
+      // Дивиденды/Купоны
+      let dividendCouponText = '';
+      if (asset.dividendYield) {
+        dividendCouponText = `Д: ${asset.dividendYield}%`;
+        this.ctx.fillStyle = '#28a745';
+      } else if (asset.couponRate) {
+        dividendCouponText = `К: ${asset.couponRate}%`;
+        this.ctx.fillStyle = '#ffc107';
+      } else {
+        dividendCouponText = '-';
+        this.ctx.fillStyle = '#6c757d';
+      }
+      this.ctx.font = '11px Arial';
+      this.ctx.fillText(dividendCouponText, 450, rowY);
+    });
   }
 }
 

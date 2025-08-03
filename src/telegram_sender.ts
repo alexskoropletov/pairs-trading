@@ -133,6 +133,24 @@ export async function sendStockAnalysisToTelegram(
   }
 }
 
+// Функция для получения красивого названия индекса
+function getIndexDisplayName(indexName: string): string {
+  switch (indexName.toLowerCase()) {
+    case 'sp500':
+      return '🇺🇸 S&P500';
+    case 'nasdaq':
+      return '📈 NASDAQ';
+    case 'imoex':
+      return '🇷🇺 IMOEX';
+    case 'rucbitr':
+      return '🏢 RUCBITR';
+    case 'rgbi':
+      return '📈 RGBI';
+    default:
+      return '📊 Индекс';
+  }
+}
+
 // CLI interface
 if (require.main === module) {
   (async () => {
@@ -144,22 +162,35 @@ if (require.main === module) {
     channelId: process.env.TELEGRAM_CHANNEL_ID || "",
   };
 
-  // Найти последнюю картинку в infographics
-  let lastImagePath: string | null = null;
+  // Найти все инфографики по индексам в папках индексов
+  const indexInfographics: Array<{name: string, path: string, time: number, index: string}> = [];
   try {
-    const dir = path.join(__dirname, '../infographics');
-    const files = (await fsExtra.readdir(dir))
-      .filter(f => f.endsWith('.png'))
-      .map(f => ({
-        name: f,
-        time: fsExtra.statSync(path.join(dir, f)).mtime.getTime()
-      }))
-      .sort((a, b) => b.time - a.time);
-    if (files.length > 0) {
-      lastImagePath = path.join(dir, files[0].name);
+    const baseDir = path.join(__dirname, '../infographics');
+    const indexNames = ['sp500', 'nasdaq', 'imoex', 'rucbitr', 'rgbi'];
+    
+    for (const indexName of indexNames) {
+      const indexDir = path.join(baseDir, indexName);
+      if (await fsExtra.pathExists(indexDir)) {
+        const files = (await fsExtra.readdir(indexDir))
+          .filter(f => f.endsWith('.png'))
+          .map(f => ({
+            name: f,
+            path: path.join(indexDir, f),
+            time: fsExtra.statSync(path.join(indexDir, f)).mtime.getTime(),
+            index: indexName
+          }))
+          .sort((a, b) => b.time - a.time);
+        
+        if (files.length > 0) {
+          // Берем самую новую инфографику для каждого индекса
+          indexInfographics.push(files[0]);
+        }
+      }
     }
+    
+    console.log(`Found ${indexInfographics.length} index infographics:`, indexInfographics.map(f => `${f.index}/${f.name}`));
   } catch (e) {
-    // ignore
+    console.log('Error reading infographics directories:', e);
   }
 
   if (!config.apiId || !config.apiHash || !config.phone || !config.channelId) {
@@ -172,12 +203,27 @@ if (require.main === module) {
   const sender = new TelegramSender(config);
   await sender.initialize();
   try {
-    if (lastImagePath) {
-      await sender.sendFile(lastImagePath, 'Инфографика по парам');
-      console.log('Image sent:', lastImagePath);
+    if (indexInfographics.length > 0) {
+      console.log(`📤 Отправляем ${indexInfographics.length} инфографик по индексам...`);
+      
+      // Отправляем каждую инфографику отдельно
+      for (const infographic of indexInfographics) {
+        const indexName = getIndexDisplayName(infographic.index);
+        const caption = `📊 Анализ пар: ${indexName}`;
+        
+        console.log(`Sending ${indexName} infographic:`, `${infographic.index}/${infographic.name}`);
+        await sender.sendFile(infographic.path, caption);
+        console.log(`✅ ${indexName} infographic sent successfully`);
+        
+        // Небольшая пауза между отправками
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      console.log('✅ All index infographics sent successfully');
     } else {
-      await sender.sendMessage('Нет инфографики для отправки.');
-      console.log('No image found, sent text message.');
+      console.log('❌ No index infographics found');
+      await sender.sendMessage('Нет инфографик по индексам для отправки.');
+      console.log('Text message sent instead.');
     }
   } finally {
     await sender.disconnect();

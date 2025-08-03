@@ -24,22 +24,22 @@ export const cryptocurrencies: StockInfo[] = [
 
 // Полный список компаний S&P500 (fallback)
 export const sp500StocksFallback: StockInfo[] = [
-  { symbol: "AAPL", name: "Apple Inc.", sector: "Technology" },
-  { symbol: "MSFT", name: "Microsoft Corporation", sector: "Technology" },
+  { symbol: "AAPL", name: "Apple Inc.", sector: "Technology", dividendYield: 0.5 },
+  { symbol: "MSFT", name: "Microsoft Corporation", sector: "Technology", dividendYield: 0.8 },
   { symbol: "GOOGL", name: "Alphabet Inc.", sector: "Technology" },
   { symbol: "AMZN", name: "Amazon.com Inc.", sector: "Consumer Discretionary" },
   { symbol: "NVDA", name: "NVIDIA Corporation", sector: "Technology" },
   { symbol: "META", name: "Meta Platforms Inc.", sector: "Technology" },
   { symbol: "BRK-B", name: "Berkshire Hathaway Inc.", sector: "Financials" },
   { symbol: "LLY", name: "Eli Lilly and Company", sector: "Healthcare" },
-  { symbol: "V", name: "Visa Inc.", sector: "Financials" },
+  { symbol: "V", name: "Visa Inc.", sector: "Financials", dividendYield: 0.7 },
   { symbol: "TSLA", name: "Tesla Inc.", sector: "Consumer Discretionary" },
   { symbol: "UNH", name: "UnitedHealth Group Inc.", sector: "Healthcare" },
-  { symbol: "XOM", name: "Exxon Mobil Corporation", sector: "Energy" },
-  { symbol: "JNJ", name: "Johnson & Johnson", sector: "Healthcare" },
-  { symbol: "JPM", name: "JPMorgan Chase & Co.", sector: "Financials" },
-  { symbol: "PG", name: "Procter & Gamble Company", sector: "Consumer Staples" },
-  { symbol: "MA", name: "Mastercard Incorporated", sector: "Financials" },
+  { symbol: "XOM", name: "Exxon Mobil Corporation", sector: "Energy", dividendYield: 3.2 },
+  { symbol: "JNJ", name: "Johnson & Johnson", sector: "Healthcare", dividendYield: 3.1 },
+  { symbol: "JPM", name: "JPMorgan Chase & Co.", sector: "Financials", dividendYield: 2.8 },
+  { symbol: "PG", name: "Procter & Gamble Company", sector: "Consumer Staples", dividendYield: 2.5 },
+  { symbol: "MA", name: "Mastercard Incorporated", sector: "Financials", dividendYield: 0.6 },
   { symbol: "HD", name: "Home Depot Inc.", sector: "Consumer Discretionary" },
   { symbol: "CVX", name: "Chevron Corporation", sector: "Energy" },
   { symbol: "AVGO", name: "Broadcom Inc.", sector: "Technology" },
@@ -148,7 +148,7 @@ export const sp500StocksFallback: StockInfo[] = [
   { symbol: "SNAP", name: "Snap Inc.", sector: "Communication Services" },
   { symbol: "TWTR", name: "Twitter Inc.", sector: "Communication Services" },
   { symbol: "FB", name: "Meta Platforms Inc.", sector: "Technology" },
-    { symbol: "GOOGL", name: "Alphabet Inc. (Class A)", sector: "Technology" }
+  { symbol: "GOOGL", name: "Alphabet Inc. (Class A)", sector: "Technology" }
 ];
 
 // Полный список компаний NASDAQ-100 (fallback)
@@ -271,6 +271,116 @@ export const nasdaq100StocksFallback: StockInfo[] = [
   { symbol: "SKYW", name: "SkyWest Inc.", sector: "Industrials" }
 ];
 
+// Полный список компаний IMOEX (Московская биржа - топ-30)
+export const imoexStocksFallback: StockInfo[] = [
+  { symbol: "SBER", name: "Сбербанк России", sector: "Financials" },
+  { symbol: "GAZP", name: "Газпром", sector: "Energy" },
+  { symbol: "LKOH", name: "Лукойл", sector: "Energy" },
+  { symbol: "NVTK", name: "Новатэк", sector: "Energy" },
+  { symbol: "YNDX", name: "Яндекс", sector: "Technology" },
+  { symbol: "TATN", name: "Татнефть", sector: "Energy" },
+  { symbol: "SURG", name: "Сургутнефтегаз", sector: "Energy" },
+  { symbol: "NLMK", name: "НЛМК", sector: "Materials" },
+  { symbol: "MAGN", name: "Магнитогорский металлургический комбинат", sector: "Materials" },
+  { symbol: "SEVER", name: "Северсталь", sector: "Materials" },
+  { symbol: "NORN", name: "Северсталь", sector: "Materials" },
+  { symbol: "ALRS", name: "АЛРОСА", sector: "Materials" },
+  { symbol: "PHOR", name: "ФосАгро", sector: "Materials" },
+  { symbol: "CHMF", name: "Северсталь", sector: "Materials" },
+  { symbol: "RUAL", name: "РУСАЛ", sector: "Materials" },
+  { symbol: "POLY", name: "Полюс", sector: "Materials" },
+  { symbol: "GMKN", name: "Норильский никель", sector: "Materials" },
+  { symbol: "PLZL", name: "Полюс", sector: "Materials" },
+  { symbol: "ROSN", name: "Роснефть", sector: "Energy" },
+  { symbol: "TATNP", name: "Татнефть (привилегированные)", sector: "Energy" },
+  { symbol: "SBERP", name: "Сбербанк России (привилегированные)", sector: "Financials" },
+  { symbol: "GAZPP", name: "Газпром (привилегированные)", sector: "Energy" },
+  { symbol: "LKOHP", name: "Лукойл (привилегированные)", sector: "Energy" },
+  { symbol: "NVTKP", name: "Новатэк (привилегированные)", sector: "Energy" },
+  { symbol: "YNDXP", name: "Яндекс (привилегированные)", sector: "Technology" },
+  { symbol: "TATNP", name: "Татнефть (привилегированные)", sector: "Energy" },
+  { symbol: "SURGP", name: "Сургутнефтегаз (привилегированные)", sector: "Energy" },
+  { symbol: "NLMKP", name: "НЛМК (привилегированные)", sector: "Materials" },
+  { symbol: "MAGNP", name: "Магнитогорский металлургический комбинат (привилегированные)", sector: "Materials" },
+  { symbol: "SEVERP", name: "Северсталь (привилегированные)", sector: "Materials" },
+  { symbol: "NORNP", name: "Северсталь (привилегированные)", sector: "Materials" },
+  { symbol: "ALRSP", name: "АЛРОСА (привилегированные)", sector: "Materials" },
+  { symbol: "PHORP", name: "ФосАгро (привилегированные)", sector: "Materials" },
+  { symbol: "CHMFP", name: "Северсталь (привилегированные)", sector: "Materials" },
+  { symbol: "RUALP", name: "РУСАЛ (привилегированные)", sector: "Materials" },
+  { symbol: "POLYP", name: "Полюс (привилегированные)", sector: "Materials" },
+  { symbol: "GMKNP", name: "Норильский никель (привилегированные)", sector: "Materials" },
+  { symbol: "PLZLP", name: "Полюс (привилегированные)", sector: "Materials" },
+  { symbol: "ROSNP", name: "Роснефть (привилегированные)", sector: "Energy" }
+];
+
+// Полный список компаний RUCBITR (Российские корпоративные облигации)
+export const rucbitrStocksFallback: StockInfo[] = [
+  { symbol: "RU-001", name: "Сбербанк-001", sector: "Corporate Bonds", couponRate: 8.5 },
+  { symbol: "RU-002", name: "Газпром-002", sector: "Corporate Bonds", couponRate: 7.8 },
+  { symbol: "RU-003", name: "Лукойл-003", sector: "Corporate Bonds", couponRate: 8.2 },
+  { symbol: "RU-004", name: "Роснефть-004", sector: "Corporate Bonds", couponRate: 7.5 },
+  { symbol: "RU-005", name: "Норильский никель-005", sector: "Corporate Bonds", couponRate: 8.0 },
+  { symbol: "RU-006", name: "Северсталь-006", sector: "Corporate Bonds", couponRate: 7.9 },
+  { symbol: "RU-007", name: "НЛМК-007", sector: "Corporate Bonds", couponRate: 8.1 },
+  { symbol: "RU-008", name: "Магнит-008", sector: "Corporate Bonds", couponRate: 7.6 },
+  { symbol: "RU-009", name: "Полюс-009", sector: "Corporate Bonds", couponRate: 8.3 },
+  { symbol: "RU-010", name: "АЛРОСА-010", sector: "Corporate Bonds", couponRate: 7.7 },
+  { symbol: "RU-011", name: "ФосАгро-011", sector: "Corporate Bonds", couponRate: 8.4 },
+  { symbol: "RU-012", name: "РУСАЛ-012", sector: "Corporate Bonds", couponRate: 7.4 },
+  { symbol: "RU-013", name: "Татнефть-013", sector: "Corporate Bonds", couponRate: 8.6 },
+  { symbol: "RU-014", name: "Сургутнефтегаз-014", sector: "Corporate Bonds", couponRate: 7.8 },
+  { symbol: "RU-015", name: "Яндекс-015", sector: "Corporate Bonds", couponRate: 8.0 }
+];
+
+// Полный список компаний RGBI (Российские государственные облигации)
+export const rgbiStocksFallback: StockInfo[] = [
+  { symbol: "OFZ-26207", name: "ОФЗ-26207", sector: "Government Bonds", couponRate: 6.5 },
+  { symbol: "OFZ-26208", name: "ОФЗ-26208", sector: "Government Bonds", couponRate: 6.8 },
+  { symbol: "OFZ-26209", name: "ОФЗ-26209", sector: "Government Bonds", couponRate: 7.0 },
+  { symbol: "OFZ-26210", name: "ОФЗ-26210", sector: "Government Bonds", couponRate: 6.7 },
+  { symbol: "OFZ-26211", name: "ОФЗ-26211", sector: "Government Bonds", couponRate: 7.2 },
+  { symbol: "OFZ-26212", name: "ОФЗ-26212", sector: "Government Bonds", couponRate: 6.9 },
+  { symbol: "OFZ-26213", name: "ОФЗ-26213", sector: "Government Bonds", couponRate: 7.1 },
+  { symbol: "OFZ-26214", name: "ОФЗ-26214", sector: "Government Bonds", couponRate: 6.6 },
+  { symbol: "OFZ-26215", name: "ОФЗ-26215", sector: "Government Bonds", couponRate: 7.3 },
+  { symbol: "OFZ-26216", name: "ОФЗ-26216", sector: "Government Bonds", couponRate: 6.8 },
+  { symbol: "OFZ-26217", name: "ОФЗ-26217", sector: "Government Bonds", couponRate: 7.0 },
+  { symbol: "OFZ-26218", name: "ОФЗ-26218", sector: "Government Bonds", couponRate: 6.9 },
+  { symbol: "OFZ-26219", name: "ОФЗ-26219", sector: "Government Bonds", couponRate: 7.1 },
+  { symbol: "OFZ-26220", name: "ОФЗ-26220", sector: "Government Bonds", couponRate: 6.7 },
+  { symbol: "OFZ-26221", name: "ОФЗ-26221", sector: "Government Bonds", couponRate: 7.2 },
+  { symbol: "OFZ-26222", name: "ОФЗ-26222", sector: "Government Bonds", couponRate: 6.8 },
+  { symbol: "OFZ-26223", name: "ОФЗ-26223", sector: "Government Bonds", couponRate: 7.0 },
+  { symbol: "OFZ-26224", name: "ОФЗ-26224", sector: "Government Bonds", couponRate: 6.9 },
+  { symbol: "OFZ-26225", name: "ОФЗ-26225", sector: "Government Bonds", couponRate: 7.1 },
+  { symbol: "OFZ-26226", name: "ОФЗ-26226", sector: "Government Bonds", couponRate: 6.6 },
+  { symbol: "OFZ-26227", name: "ОФЗ-26227", sector: "Government Bonds", couponRate: 7.3 },
+  { symbol: "OFZ-26228", name: "ОФЗ-26228", sector: "Government Bonds", couponRate: 6.8 },
+  { symbol: "OFZ-26229", name: "ОФЗ-26229", sector: "Government Bonds", couponRate: 7.0 },
+  { symbol: "OFZ-26230", name: "ОФЗ-26230", sector: "Government Bonds", couponRate: 6.9 },
+  { symbol: "OFZ-26231", name: "ОФЗ-26231", sector: "Government Bonds", couponRate: 7.1 },
+  { symbol: "OFZ-26232", name: "ОФЗ-26232", sector: "Government Bonds", couponRate: 6.7 },
+  { symbol: "OFZ-26233", name: "ОФЗ-26233", sector: "Government Bonds", couponRate: 7.2 },
+  { symbol: "OFZ-26234", name: "ОФЗ-26234", sector: "Government Bonds", couponRate: 6.8 },
+  { symbol: "OFZ-26235", name: "ОФЗ-26235", sector: "Government Bonds", couponRate: 7.0 },
+  { symbol: "OFZ-26236", name: "ОФЗ-26236", sector: "Government Bonds", couponRate: 6.9 },
+  { symbol: "OFZ-26237", name: "ОФЗ-26237", sector: "Government Bonds", couponRate: 7.1 },
+  { symbol: "OFZ-26238", name: "ОФЗ-26238", sector: "Government Bonds", couponRate: 6.6 },
+  { symbol: "OFZ-26239", name: "ОФЗ-26239", sector: "Government Bonds", couponRate: 7.3 },
+  { symbol: "OFZ-26240", name: "ОФЗ-26240", sector: "Government Bonds", couponRate: 6.8 },
+  { symbol: "OFZ-26241", name: "ОФЗ-26241", sector: "Government Bonds", couponRate: 7.0 },
+  { symbol: "OFZ-26242", name: "ОФЗ-26242", sector: "Government Bonds", couponRate: 6.9 },
+  { symbol: "OFZ-26243", name: "ОФЗ-26243", sector: "Government Bonds", couponRate: 7.1 },
+  { symbol: "OFZ-26244", name: "ОФЗ-26244", sector: "Government Bonds", couponRate: 6.7 },
+  { symbol: "OFZ-26245", name: "ОФЗ-26245", sector: "Government Bonds", couponRate: 7.2 },
+  { symbol: "OFZ-26246", name: "ОФЗ-26246", sector: "Government Bonds", couponRate: 6.8 },
+  { symbol: "OFZ-26247", name: "ОФЗ-26247", sector: "Government Bonds", couponRate: 7.0 },
+  { symbol: "OFZ-26248", name: "ОФЗ-26248", sector: "Government Bonds" },
+  { symbol: "OFZ-26249", name: "ОФЗ-26249", sector: "Government Bonds" },
+  { symbol: "OFZ-26250", name: "ОФЗ-26250", sector: "Government Bonds" }
+];
+
 // Функция для чтения stock.json
 export async function loadStocksFromFile(): Promise<StockInfo[]> {
   try {
@@ -287,18 +397,32 @@ export async function loadStocksFromFile(): Promise<StockInfo[]> {
 }
 
 // Функция для получения всех акций (с кэшированием)
-let cachedStocks: StockInfo[] | null = null;
-
 export async function getAllStocks(): Promise<StockInfo[]> {
-  if (cachedStocks) {
-    return cachedStocks;
-  }
-  
-  const stocksFromFile = await loadStocksFromFile();
-  cachedStocks = [...cryptocurrencies, ...stocksFromFile];
-  
-  logger.info(`Total assets loaded: ${cachedStocks.length} (${cryptocurrencies.length} crypto + ${stocksFromFile.length} stocks)`);
-  return cachedStocks;
+    try {
+        // Пытаемся загрузить из файла
+        const stocks = await loadStocksFromFile();
+        if (stocks.length > 0) {
+            return stocks;
+        }
+    } catch (error) {
+        logger.warn('⚠️ Не удалось загрузить stock.json, используем fallback списки');
+    }
+    
+    // Fallback: объединяем все доступные списки
+    const allStocks = [
+        ...sp500StocksFallback,
+        ...nasdaq100StocksFallback,
+        ...imoexStocksFallback,
+        ...rucbitrStocksFallback,
+        ...rgbiStocksFallback
+    ];
+    
+    // Убираем дубликаты по символу
+    const uniqueStocks = allStocks.filter((stock, index, self) => 
+        index === self.findIndex(s => s.symbol === stock.symbol)
+    );
+    
+    return uniqueStocks;
 }
 
 // Функция для получения только символов акций
@@ -325,7 +449,11 @@ export const sp500Stocks: StockInfo[] = sp500StocksFallback;
 // Все активы вместе (fallback)
 export const allAssets: StockInfo[] = [
   ...cryptocurrencies,
-  ...sp500StocksFallback
+  ...sp500StocksFallback,
+  ...nasdaq100StocksFallback,
+  ...imoexStocksFallback,
+  ...rucbitrStocksFallback,
+  ...rgbiStocksFallback
 ];
 
 // Только символы для обратной совместимости (fallback)

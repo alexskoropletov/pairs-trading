@@ -16,6 +16,7 @@ export interface StockInfo {
   marketCap?: number;
   peRatio?: number;
   dividendYield?: number;
+  couponRate?: number; // Годовая купонная ставка в %
   beta?: number;
 }
 
@@ -122,8 +123,11 @@ export interface CorrelationPair {
 
 export interface PairsTradingAnalysis {
   totalPairs: number;
-  sp500Pairs?: number; // Добавляем поле для количества S&P500 пар
-  nasdaqPairs?: number; // Добавляем поле для количества NASDAQ пар
+  sp500Pairs?: number; // Added field for S&P500 pairs count
+  nasdaqPairs?: number; // Added field for NASDAQ pairs count
+  imoexPairs?: number; // Added field for IMOEX pairs count
+  rucbitrPairs?: number; // Added field for RUCBITR pairs count
+  rgbiPairs?: number; // Added field for RGBI pairs count
   averageCorrelation: number;
   maxCorrelation: number;
   minCorrelation: number;
@@ -131,7 +135,27 @@ export interface PairsTradingAnalysis {
     asset1: string;
     asset2: string;
     correlation: number;
+    longAsset: string;
+    shortAsset: string;
     strategy: string;
-    index?: string; // Добавляем поле для индекса
+    longProspectivity: number;
+    shortProspectivity: number;
+    volatility1: number;
+    volatility2: number;
+    avgReturn1: number;
+    avgReturn2: number;
+    index?: string; // Added field for index
   }[];
+  assetsInfo?: AssetInfo[]; // Added information about assets
+}
+
+// Новый интерфейс для информации об активах
+export interface AssetInfo {
+  symbol: string;
+  currentPrice: number;
+  volatility: number;
+  avgReturn: number;
+  index: string;
+  dividendYield?: number; // Годовая дивидендная доходность в %
+  couponRate?: number; // Годовая купонная ставка в %
 } 

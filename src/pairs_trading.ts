@@ -2,11 +2,67 @@ import dotenv from 'dotenv';
 dotenv.config();
 import * as fs from 'fs-extra';
 import path from 'path';
-import { StockData, CSVRow, csvRowToStockData, CorrelationPair, PairsTradingAnalysis } from './types';
-import { stockSymbols, sp500StocksFallback, nasdaq100StocksFallback } from './stock';
+import { StockData, CSVRow, csvRowToStockData, CorrelationPair, PairsTradingAnalysis, AssetInfo } from './types';
+import { stockSymbols, sp500StocksFallback, nasdaq100StocksFallback, imoexStocksFallback, rucbitrStocksFallback, rgbiStocksFallback } from './stock';
+import { ensureTickerDirectories } from './utils';
 import logger from './logger';
+import indexesConfigManager from './indexes_config';
 
 const STATS_DIR = 'stats';
+const TICKERS_DIR = 'tickers';
+
+// Функция для определения индекса тикера
+function getTickerIndex(symbol: string): 'sp500' | 'nasdaq' | 'imoex' | 'rucbitr' | 'rgbi' {
+    const sp500Symbols = sp500StocksFallback.map(stock => stock.symbol);
+    const nasdaqSymbols = nasdaq100StocksFallback.map(stock => stock.symbol);
+    const imoexSymbols = imoexStocksFallback.map(stock => stock.symbol);
+    const rucbitrSymbols = rucbitrStocksFallback.map(stock => stock.symbol);
+    const rgbiSymbols = rgbiStocksFallback.map(stock => stock.symbol);
+    
+    // Проверяем по приоритету: российские индексы, затем американские
+    if (rgbiSymbols.includes(symbol)) {
+        return 'rgbi';
+    } else if (rucbitrSymbols.includes(symbol)) {
+        return 'rucbitr';
+    } else if (imoexSymbols.includes(symbol)) {
+        return 'imoex';
+    } else if (nasdaqSymbols.includes(symbol)) {
+        return 'nasdaq';
+    } else if (sp500Symbols.includes(symbol)) {
+        return 'sp500';
+    } else {
+        // Для криптовалют и других активов используем S&P500
+        return 'sp500';
+    }
+}
+
+// Функция для получения пути к CSV файлу
+function getCSVPath(symbol: string): string {
+    const index = getTickerIndex(symbol);
+    let dir: string;
+    
+    switch (index) {
+        case 'sp500':
+            dir = path.join(TICKERS_DIR, 'sp500');
+            break;
+        case 'nasdaq':
+            dir = path.join(TICKERS_DIR, 'nasdaq');
+            break;
+        case 'imoex':
+            dir = path.join(TICKERS_DIR, 'imoex');
+            break;
+        case 'rucbitr':
+            dir = path.join(TICKERS_DIR, 'rucbitr');
+            break;
+        case 'rgbi':
+            dir = path.join(TICKERS_DIR, 'rgbi');
+            break;
+        default:
+            dir = path.join(TICKERS_DIR, 'sp500');
+    }
+    
+    return path.join(dir, `${symbol}.csv`);
+}
 
 // Получение горизонта анализа из аргументов командной строки
 function getAnalysisHorizon(): number {
@@ -19,25 +75,48 @@ function getAnalysisHorizon(): number {
 }
 
 // Функция для разделения тикеров по индексам
-function separateTickersByIndex(): { sp500: string[], nasdaq: string[] } {
+function separateTickersByIndex(): { sp500: string[], nasdaq: string[], imoex: string[], rucbitr: string[], rgbi: string[] } {
     const sp500Symbols = sp500StocksFallback.map(stock => stock.symbol);
     const nasdaqSymbols = nasdaq100StocksFallback.map(stock => stock.symbol);
+    const imoexSymbols = imoexStocksFallback.map(stock => stock.symbol);
+    const rucbitrSymbols = rucbitrStocksFallback.map(stock => stock.symbol);
+    const rgbiSymbols = rgbiStocksFallback.map(stock => stock.symbol);
     
     // Фильтруем только те тикеры, для которых есть данные
     const availableSymbols = stockSymbols;
     
-    const sp500 = sp500Symbols.filter(symbol => availableSymbols.includes(symbol));
-    const nasdaq = nasdaqSymbols.filter(symbol => availableSymbols.includes(symbol));
+    // Фильтруем только активные индексы
+    const sp500 = indexesConfigManager.isIndexEnabled('sp500') 
+        ? sp500Symbols.filter(symbol => availableSymbols.includes(symbol))
+        : [];
+    const nasdaq = indexesConfigManager.isIndexEnabled('nasdaq')
+        ? nasdaqSymbols.filter(symbol => availableSymbols.includes(symbol))
+        : [];
+    const imoex = indexesConfigManager.isIndexEnabled('imoex')
+        ? imoexSymbols.filter(symbol => availableSymbols.includes(symbol))
+        : [];
+    const rucbitr = indexesConfigManager.isIndexEnabled('rucbitr')
+        ? rucbitrSymbols.filter(symbol => availableSymbols.includes(symbol))
+        : [];
+    const rgbi = indexesConfigManager.isIndexEnabled('rgbi')
+        ? rgbiSymbols.filter(symbol => availableSymbols.includes(symbol))
+        : [];
     
     logger.info(`📊 S&P 500 тикеров: ${sp500.length}`);
     logger.info(`📊 NASDAQ тикеров: ${nasdaq.length}`);
+    logger.info(`🇷🇺 IMOEX тикеров: ${imoex.length}`);
+    logger.info(`🏢 RUCBITR тикеров: ${rucbitr.length}`);
+    logger.info(`📈 RGBI тикеров: ${rgbi.length}`);
     
-    return { sp500, nasdaq };
+    // Логируем активные индексы
+    indexesConfigManager.logEnabledIndexes();
+    
+    return { sp500, nasdaq, imoex, rucbitr, rgbi };
 }
 
 // Функция для чтения CSV файла
 async function readCSV(symbol: string): Promise<StockData[]> {
-    const csvPath = path.join(STATS_DIR, `${symbol}.csv`);
+    const csvPath = getCSVPath(symbol);
     const csvContent = await fs.readFile(csvPath, 'utf-8');
     const lines = csvContent.split('\n');
     const headers = lines[0].split(',');
@@ -111,8 +190,12 @@ function assessProspectivity(returns: number[], volatility: number): number {
 }
 
 // Функция для анализа пар активов в рамках одного индекса
-async function analyzePairsInIndex(symbols: string[], indexName: string, horizonDays: number): Promise<CorrelationPair[]> {
-    logger.info(`🔍 Анализируем корреляции между парами в ${indexName} за последние ${horizonDays} дней...`);
+export async function analyzePairsInIndex(symbols: string[], indexName: string, horizonDays: number): Promise<CorrelationPair[]> {
+    // Получаем порог корреляции для данного индекса
+    const indexKey = indexName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const correlationThreshold = indexesConfigManager.getIndexCorrelationThreshold(indexKey);
+    
+    logger.info(`🔍 Анализируем корреляции между парами в ${indexName} за последние ${horizonDays} дней (порог: ${correlationThreshold * 100}%)...`);
     
     const pairs: CorrelationPair[] = [];
     
@@ -200,20 +283,94 @@ async function analyzePairsInIndex(symbols: string[], indexName: string, horizon
 // Функция для анализа всех пар активов
 async function analyzePairs(horizonDays: number): Promise<CorrelationPair[]> {
     // Разделяем тикеры по индексам
-    const { sp500, nasdaq } = separateTickersByIndex();
+    const { sp500, nasdaq, imoex, rucbitr, rgbi } = separateTickersByIndex();
     
     // Анализируем пары отдельно для каждого индекса
     const sp500Pairs = await analyzePairsInIndex(sp500, 'S&P500', horizonDays);
     const nasdaqPairs = await analyzePairsInIndex(nasdaq, 'NASDAQ', horizonDays);
+    const imoexPairs = await analyzePairsInIndex(imoex, 'IMOEX', horizonDays);
+    const rucbitrPairs = await analyzePairsInIndex(rucbitr, 'RUCBITR', horizonDays);
+    const rgbiPairs = await analyzePairsInIndex(rgbi, 'RGBI', horizonDays);
     
     // Объединяем результаты
-    const allPairs = [...sp500Pairs, ...nasdaqPairs];
+    const allPairs = [...sp500Pairs, ...nasdaqPairs, ...imoexPairs, ...rucbitrPairs, ...rgbiPairs];
     
     logger.info(`📊 Всего проанализировано пар: ${allPairs.length}`);
-    logger.info(`📊 S&P500 пар: ${sp500Pairs.length}`);
-    logger.info(`📊 NASDAQ пар: ${nasdaqPairs.length}`);
+    
+    // Логируем только активные индексы
+    if (indexesConfigManager.isIndexEnabled('sp500')) {
+        logger.info(`📊 S&P500 пар: ${sp500Pairs.length}`);
+    }
+    if (indexesConfigManager.isIndexEnabled('nasdaq')) {
+        logger.info(`📊 NASDAQ пар: ${nasdaqPairs.length}`);
+    }
+    if (indexesConfigManager.isIndexEnabled('imoex')) {
+        logger.info(`🇷🇺 IMOEX пар: ${imoexPairs.length}`);
+    }
+    if (indexesConfigManager.isIndexEnabled('rucbitr')) {
+        logger.info(`🏢 RUCBITR пар: ${rucbitrPairs.length}`);
+    }
+    if (indexesConfigManager.isIndexEnabled('rgbi')) {
+        logger.info(`📈 RGBI пар: ${rgbiPairs.length}`);
+    }
     
     return allPairs;
+}
+
+// Функция для сбора информации об активах
+export async function collectAssetsInfo(symbols: string[], indexName: string): Promise<AssetInfo[]> {
+    const assetsInfo: AssetInfo[] = [];
+    
+    // Импортируем данные о тикерах для получения информации о дивидендах и купонах
+    const { sp500StocksFallback, nasdaq100StocksFallback, imoexStocksFallback, rucbitrStocksFallback, rgbiStocksFallback } = await import('./stock');
+    
+    // Объединяем все данные о тикерах
+    const allStocks = [
+        ...sp500StocksFallback,
+        ...nasdaq100StocksFallback,
+        ...imoexStocksFallback,
+        ...rucbitrStocksFallback,
+        ...rgbiStocksFallback
+    ];
+    
+    for (const symbol of symbols) {
+        try {
+            const stockData = await readCSV(symbol);
+            if (stockData.length === 0) continue;
+            
+            // Получаем текущую цену (последняя запись)
+            const currentPrice = stockData[stockData.length - 1].Close;
+            
+            // Вычисляем доходности и волатильность
+            const prices = stockData.map(d => d.Close);
+            const returns = calculateReturns(prices);
+            const volatility = calculateVolatility(returns);
+            const avgReturn = calculateAverageReturn(returns);
+            
+            // Ищем информацию о дивидендах и купонах
+            const stockInfo = allStocks.find(stock => stock.symbol === symbol);
+            const dividendYield = stockInfo?.dividendYield;
+            const couponRate = stockInfo?.couponRate;
+            
+            assetsInfo.push({
+                symbol,
+                currentPrice,
+                volatility,
+                avgReturn,
+                index: indexName,
+                dividendYield,
+                couponRate
+            });
+            
+            const dividendInfo = dividendYield ? `, дивиденды ${dividendYield}%` : '';
+            const couponInfo = couponRate ? `, купон ${couponRate}%` : '';
+            logger.info(`📊 Собрана информация для ${symbol}: цена $${currentPrice.toFixed(2)}, волатильность ${volatility.toFixed(2)}%${dividendInfo}${couponInfo}`);
+        } catch (error) {
+            logger.error(`❌ Ошибка сбора информации для ${symbol}: ${error}`);
+        }
+    }
+    
+    return assetsInfo;
 }
 
 // Функция для сохранения результатов
@@ -221,6 +378,21 @@ async function saveResults(topPairs: CorrelationPair[], analysis: PairsTradingAn
     // Разделяем пары по индексам
     const sp500Pairs = topPairs.filter(pair => pair.index === 'S&P500');
     const nasdaqPairs = topPairs.filter(pair => pair.index === 'NASDAQ');
+    const imoexPairs = topPairs.filter(pair => pair.index === 'IMOEX');
+    const rucbitrPairs = topPairs.filter(pair => pair.index === 'RUCBITR');
+    const rgbiPairs = topPairs.filter(pair => pair.index === 'RGBI');
+    
+    // Собираем информацию об активах
+    const { sp500, nasdaq, imoex, rucbitr, rgbi } = separateTickersByIndex();
+    const sp500AssetsInfo = await collectAssetsInfo(sp500, 'S&P500');
+    const nasdaqAssetsInfo = await collectAssetsInfo(nasdaq, 'NASDAQ');
+    const imoexAssetsInfo = await collectAssetsInfo(imoex, 'IMOEX');
+    const rucbitrAssetsInfo = await collectAssetsInfo(rucbitr, 'RUCBITR');
+    const rgbiAssetsInfo = await collectAssetsInfo(rgbi, 'RGBI');
+    const allAssetsInfo = [...sp500AssetsInfo, ...nasdaqAssetsInfo, ...imoexAssetsInfo, ...rucbitrAssetsInfo, ...rgbiAssetsInfo];
+    
+    // Добавляем информацию об активах в анализ
+    analysis.assetsInfo = allAssetsInfo;
     
     // Сохраняем топ-3 пары S&P500
     const sp500Data = sp500Pairs.map(pair => ({
@@ -241,6 +413,57 @@ async function saveResults(topPairs: CorrelationPair[], analysis: PairsTradingAn
     
     // Сохраняем топ-3 пары NASDAQ
     const nasdaqData = nasdaqPairs.map(pair => ({
+        asset1: pair.asset1,
+        asset2: pair.asset2,
+        correlation: pair.correlation.toFixed(4),
+        longAsset: pair.longAsset,
+        shortAsset: pair.shortAsset,
+        strategy: pair.strategy,
+        index: pair.index,
+        longProspectivity: pair.longProspectivity.toFixed(4),
+        shortProspectivity: pair.shortProspectivity.toFixed(4),
+        volatility1: pair.volatility1.toFixed(4),
+        volatility2: pair.volatility2.toFixed(4),
+        avgReturn1: pair.avgReturn1.toFixed(4),
+        avgReturn2: pair.avgReturn2.toFixed(4)
+    }));
+
+    // Сохраняем топ-3 пары IMOEX
+    const imoexData = imoexPairs.map(pair => ({
+        asset1: pair.asset1,
+        asset2: pair.asset2,
+        correlation: pair.correlation.toFixed(4),
+        longAsset: pair.longAsset,
+        shortAsset: pair.shortAsset,
+        strategy: pair.strategy,
+        index: pair.index,
+        longProspectivity: pair.longProspectivity.toFixed(4),
+        shortProspectivity: pair.shortProspectivity.toFixed(4),
+        volatility1: pair.volatility1.toFixed(4),
+        volatility2: pair.volatility2.toFixed(4),
+        avgReturn1: pair.avgReturn1.toFixed(4),
+        avgReturn2: pair.avgReturn2.toFixed(4)
+    }));
+
+    // Сохраняем топ-3 пары RUCBITR
+    const rucbitrData = rucbitrPairs.map(pair => ({
+        asset1: pair.asset1,
+        asset2: pair.asset2,
+        correlation: pair.correlation.toFixed(4),
+        longAsset: pair.longAsset,
+        shortAsset: pair.shortAsset,
+        strategy: pair.strategy,
+        index: pair.index,
+        longProspectivity: pair.longProspectivity.toFixed(4),
+        shortProspectivity: pair.shortProspectivity.toFixed(4),
+        volatility1: pair.volatility1.toFixed(4),
+        volatility2: pair.volatility2.toFixed(4),
+        avgReturn1: pair.avgReturn1.toFixed(4),
+        avgReturn2: pair.avgReturn2.toFixed(4)
+    }));
+
+    // Сохраняем топ-3 пары RGBI
+    const rgbiData = rgbiPairs.map(pair => ({
         asset1: pair.asset1,
         asset2: pair.asset2,
         correlation: pair.correlation.toFixed(4),
@@ -292,11 +515,27 @@ async function saveResults(topPairs: CorrelationPair[], analysis: PairsTradingAn
         await fs.writeJson('stats/pairs_trading_nasdaq.csv', nasdaqData, { spaces: 2 });
         logger.info(`💾 NASDAQ пары сохранены в stats/pairs_trading_nasdaq.csv (${nasdaqData.length} пар)`);
     }
+
+    if (imoexData.length > 0) {
+        await fs.writeJson('stats/pairs_trading_imoex.csv', imoexData, { spaces: 2 });
+        logger.info(`💾 IMOEX пары сохранены в stats/pairs_trading_imoex.csv (${imoexData.length} пар)`);
+    }
+
+    if (rucbitrData.length > 0) {
+        await fs.writeJson('stats/pairs_trading_rucbitr.csv', rucbitrData, { spaces: 2 });
+        logger.info(`💾 RUCBITR пары сохранены в stats/pairs_trading_rucbitr.csv (${rucbitrData.length} пар)`);
+    }
+
+    if (rgbiData.length > 0) {
+        await fs.writeJson('stats/pairs_trading_rgbi.csv', rgbiData, { spaces: 2 });
+        logger.info(`💾 RGBI пары сохранены в stats/pairs_trading_rgbi.csv (${rgbiData.length} пар)`);
+    }
     
     // Сохраняем полный анализ
     await fs.writeJson('stats/pairs_analysis.json', analysis, { spaces: 2 });
     
     logger.info('💾 Результаты сохранены в stats/pairs_trading.csv и stats/pairs_analysis.json');
+    logger.info(`📊 Собрана информация о ${allAssetsInfo.length} активах`);
 }
 
 // Функция для вывода результатов
@@ -319,8 +558,23 @@ function displayResults(topPairs: CorrelationPair[], analysis: PairsTradingAnaly
     logger.info('\n📊 СТАТИСТИКА АНАЛИЗА:');
     logger.info('=' .repeat(50));
     logger.info(`Всего проанализировано пар: ${analysis.totalPairs}`);
-    logger.info(`S&P500 пар: ${analysis.sp500Pairs}`);
-    logger.info(`NASDAQ пар: ${analysis.nasdaqPairs}`);
+    
+    // Логируем только активные индексы
+    if (indexesConfigManager.isIndexEnabled('sp500')) {
+        logger.info(`S&P500 пар: ${analysis.sp500Pairs}`);
+    }
+    if (indexesConfigManager.isIndexEnabled('nasdaq')) {
+        logger.info(`NASDAQ пар: ${analysis.nasdaqPairs}`);
+    }
+    if (indexesConfigManager.isIndexEnabled('imoex')) {
+        logger.info(`🇷🇺 IMOEX пар: ${analysis.imoexPairs}`);
+    }
+    if (indexesConfigManager.isIndexEnabled('rucbitr')) {
+        logger.info(`🏢 RUCBITR пар: ${analysis.rucbitrPairs}`);
+    }
+    if (indexesConfigManager.isIndexEnabled('rgbi')) {
+        logger.info(`📈 RGBI пар: ${analysis.rgbiPairs}`);
+    }
     logger.info(`Средняя корреляция: ${(analysis.averageCorrelation * 100).toFixed(2)}%`);
     logger.info(`Максимальная корреляция: ${(analysis.maxCorrelation * 100).toFixed(2)}%`);
     logger.info(`Минимальная корреляция: ${(analysis.minCorrelation * 100).toFixed(2)}%`);
@@ -339,8 +593,9 @@ async function main(): Promise<void> {
     logger.info('🎯 Анализ пар активов для парного трейдинга (по индексам)...');
     
     try {
-        // Создаем папку stats если её нет
+        // Создаем папки если их нет
         await fs.ensureDir(STATS_DIR);
+        await ensureTickerDirectories();
         
         // Получаем горизонт анализа
         const horizonDays = getAnalysisHorizon();
@@ -354,23 +609,35 @@ async function main(): Promise<void> {
         // Разделяем пары по индексам
         const sp500AllPairs = allPairs.filter(p => p.index === 'S&P500').sort((a, b) => b.correlation - a.correlation);
         const nasdaqAllPairs = allPairs.filter(p => p.index === 'NASDAQ').sort((a, b) => b.correlation - a.correlation);
+        const imoexAllPairs = allPairs.filter(p => p.index === 'IMOEX').sort((a, b) => b.correlation - a.correlation);
+        const rucbitrAllPairs = allPairs.filter(p => p.index === 'RUCBITR').sort((a, b) => b.correlation - a.correlation);
+        const rgbiAllPairs = allPairs.filter(p => p.index === 'RGBI').sort((a, b) => b.correlation - a.correlation);
         
         // Берем топ-3 пары для каждого индекса
         const topSp500Pairs = sp500AllPairs.slice(0, process.env.TOP_PAIRS_COUNT ? parseInt(process.env.TOP_PAIRS_COUNT) : 3);
         const topNasdaqPairs = nasdaqAllPairs.slice(0, process.env.TOP_PAIRS_COUNT ? parseInt(process.env.TOP_PAIRS_COUNT) : 3);
+        const topImoexPairs = imoexAllPairs.slice(0, process.env.TOP_PAIRS_COUNT ? parseInt(process.env.TOP_PAIRS_COUNT) : 3);
+        const topRucbitrPairs = rucbitrAllPairs.slice(0, process.env.TOP_PAIRS_COUNT ? parseInt(process.env.TOP_PAIRS_COUNT) : 3);
+        const topRgbiPairs = rgbiAllPairs.slice(0, process.env.TOP_PAIRS_COUNT ? parseInt(process.env.TOP_PAIRS_COUNT) : 3);
         
         // Объединяем топ-пары
-        const topPairs = [...topSp500Pairs, ...topNasdaqPairs].filter(p => Number(p.correlation) > getCorrelation());
+        const topPairs = [...topSp500Pairs, ...topNasdaqPairs, ...topImoexPairs, ...topRucbitrPairs, ...topRgbiPairs].filter(p => Number(p.correlation) > getCorrelation());
         
         // Вычисляем статистику
         const correlations = allPairs.map(p => p.correlation);
         const sp500Pairs = allPairs.filter(p => p.index === 'S&P500').length;
         const nasdaqPairs = allPairs.filter(p => p.index === 'NASDAQ').length;
+        const imoexPairs = allPairs.filter(p => p.index === 'IMOEX').length;
+        const rucbitrPairs = allPairs.filter(p => p.index === 'RUCBITR').length;
+        const rgbiPairs = allPairs.filter(p => p.index === 'RGBI').length;
         
         const analysis: PairsTradingAnalysis = {
             totalPairs: allPairs.length,
             sp500Pairs,
             nasdaqPairs,
+            imoexPairs,
+            rucbitrPairs,
+            rgbiPairs,
             averageCorrelation: correlations.reduce((sum, val) => sum + val, 0) / correlations.length,
             maxCorrelation: Math.max(...correlations),
             minCorrelation: Math.min(...correlations),
@@ -378,7 +645,15 @@ async function main(): Promise<void> {
                 asset1: p.asset1,
                 asset2: p.asset2,
                 correlation: p.correlation,
+                longAsset: p.longAsset,
+                shortAsset: p.shortAsset,
                 strategy: p.strategy,
+                longProspectivity: p.longProspectivity,
+                shortProspectivity: p.shortProspectivity,
+                volatility1: p.volatility1,
+                volatility2: p.volatility2,
+                avgReturn1: p.avgReturn1,
+                avgReturn2: p.avgReturn2,
                 index: p.index
             }))
         };
@@ -410,6 +685,33 @@ async function main(): Promise<void> {
             logger.info(`  Максимальная корреляция: ${(Math.max(...nasdaqCorrelations) * 100).toFixed(2)}%`);
             logger.info(`  Топ-пары: ${topNasdaqPairs.map(p => `${p.asset1}-${p.asset2}`).join(', ')}`);
         }
+
+        if (imoexAllPairs.length > 0) {
+            const imoexCorrelations = imoexAllPairs.map(p => p.correlation);
+            logger.info(`\n📈 IMOEX:`);
+            logger.info(`  Всего пар: ${imoexAllPairs.length}`);
+            logger.info(`  Средняя корреляция: ${(imoexCorrelations.reduce((sum, val) => sum + val, 0) / imoexCorrelations.length * 100).toFixed(2)}%`);
+            logger.info(`  Максимальная корреляция: ${(Math.max(...imoexCorrelations) * 100).toFixed(2)}%`);
+            logger.info(`  Топ-пары: ${topImoexPairs.map(p => `${p.asset1}-${p.asset2}`).join(', ')}`);
+        }
+
+        if (rucbitrAllPairs.length > 0) {
+            const rucbitrCorrelations = rucbitrAllPairs.map(p => p.correlation);
+            logger.info(`\n📈 RUCBITR:`);
+            logger.info(`  Всего пар: ${rucbitrAllPairs.length}`);
+            logger.info(`  Средняя корреляция: ${(rucbitrCorrelations.reduce((sum, val) => sum + val, 0) / rucbitrCorrelations.length * 100).toFixed(2)}%`);
+            logger.info(`  Максимальная корреляция: ${(Math.max(...rucbitrCorrelations) * 100).toFixed(2)}%`);
+            logger.info(`  Топ-пары: ${topRucbitrPairs.map(p => `${p.asset1}-${p.asset2}`).join(', ')}`);
+        }
+
+        if (rgbiAllPairs.length > 0) {
+            const rgbiCorrelations = rgbiAllPairs.map(p => p.correlation);
+            logger.info(`\n📈 RGBI:`);
+            logger.info(`  Всего пар: ${rgbiAllPairs.length}`);
+            logger.info(`  Средняя корреляция: ${(rgbiCorrelations.reduce((sum, val) => sum + val, 0) / rgbiCorrelations.length * 100).toFixed(2)}%`);
+            logger.info(`  Максимальная корреляция: ${(Math.max(...rgbiCorrelations) * 100).toFixed(2)}%`);
+            logger.info(`  Топ-пары: ${topRgbiPairs.map(p => `${p.asset1}-${p.asset2}`).join(', ')}`);
+        }
         
         logger.info('\n✅ Анализ парного трейдинга завершен!');
         
@@ -420,7 +722,7 @@ async function main(): Promise<void> {
 }
 
 function getCorrelation(): number {
-    return process.env.MIN_CORRELATION ? parseInt(process.env.MIN_CORRELATION) : 0.7;
+    return process.env.MIN_CORRELATION ? parseFloat(process.env.MIN_CORRELATION) : indexesConfigManager.getConfig().defaultCorrelationThreshold;
 }
 
 // Запускаем скрипт

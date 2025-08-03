@@ -17,7 +17,11 @@
     "dev:pairs": "ts-node src/pairs_trading.ts",
     "dev:stocks": "ts-node src/get_s_n_p.ts",
     "infographic": "npm run build && node dist/create_infographic.js",
+    "infographic:en": "npm run build && node dist/create_infographic.js --lang=en",
+    "infographic:ru": "npm run build && node dist/create_infographic.js --lang=ru",
     "dev:infographic": "ts-node src/create_infographic.ts",
+    "dev:infographic:en": "ts-node src/create_infographic.ts --lang=en",
+    "dev:infographic:ru": "ts-node src/create_infographic.ts --lang=ru",
     "telegram": "npm run build && node dist/telegram_sender.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -25,7 +29,15 @@
     "test:unit": "jest --testPathPattern=unit",
     "test:e2e": "jest --testPathPattern=e2e",
     "test:unit:watch": "jest --testPathPattern=unit --watch",
-    "test:e2e:watch": "jest --testPathPattern=e2e --watch"
+    "test:e2e:watch": "jest --testPathPattern=e2e --watch",
+    "test:russian": "ts-node tests/unit/russian_sources.test.ts",
+    "dev:russian": "ts-node tests/unit/russian_sources.test.ts",
+    "test:russian-pairs": "ts-node tests/unit/russian_pairs.test.ts",
+    "dev:russian-pairs": "ts-node tests/unit/russian_pairs.test.ts",
+    "index-analysis": "ts-node src/index_pairs_analysis.ts",
+    "dev:index-analysis": "ts-node src/index_pairs_analysis.ts",
+    "index-portfolio": "ts-node src/index_portfolio_analysis.ts",
+    "dev:index-portfolio": "ts-node src/index_portfolio_analysis.ts"
   },
   "dependencies": {
     "axios": "^1.6.0",
